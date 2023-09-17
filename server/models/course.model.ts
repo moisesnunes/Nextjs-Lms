@@ -1,18 +1,19 @@
 require("dotenv").config();
 
 import mongoose, { Document, Model, Schema } from "mongoose";
+import { IUser } from "./user.model";
 
 interface IComment extends Document {
-  user: object;
-  comment: string;
-  commentReplies?: IComment[];
+  user: IUser;
+  question: string;
+  questionReplies: IComment[];
 }
 
 interface IReview extends Document {
-  user: object;
+  user: IUser;
   rating: number;
   comment: string;
-  commentReplies: IComment[];
+  commentReplies?: IComment[];
 }
 
 interface ILink extends Document {
@@ -38,12 +39,12 @@ interface ICourse extends Document {
   description: string;
   price: number;
   estimatedPrice?: number;
-  thumbNail: object;
+  thumbnail: object;
   tags: string;
   level: string;
   demoUrl: string;
-  benefits: { title: string[] };
-  preRequisites: { title: string[] };
+  benefits: { title: string }[];
+  preRequisites: { title: string }[];
   reviews: IReview[];
   courseData: ICourseData[];
   ratings?: number;
@@ -57,6 +58,7 @@ const reviewSchema = new Schema<IReview>({
     default: 0,
   },
   comment: String,
+  commentReplies: [Object],
 });
 
 const linkSchema = new Schema<ILink>({
@@ -66,8 +68,8 @@ const linkSchema = new Schema<ILink>({
 
 const commentSchema = new Schema<IComment>({
   user: Object,
-  comment: String,
-  commentReplies: [Object],
+  question: String,
+  questionReplies: [Object],
 });
 
 const courseDataSchema = new Schema<ICourseData>({
@@ -98,7 +100,7 @@ const courseSchema = new Schema<ICourse>({
   estimatedPrice: {
     type: Number,
   },
-  thumbNail: {
+  thumbnail: {
     public_id: {
       type: String,
     },
