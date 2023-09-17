@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { ErrorMiddleWare } from "./middleware/error";
 import courseRouter from "./routes/course.route";
 import useRouter from "./routes/user.route";
+import orderRouter from "./routes/order.route";
 
 require("dotenv").config();
 const express = require("express");
@@ -24,8 +25,7 @@ app.use(
 );
 
 // routes
-app.use("/api/v1", useRouter);
-app.use("/api/v1", courseRouter);
+app.use("/api/v1", useRouter, courseRouter, orderRouter);
 
 
 // test api
