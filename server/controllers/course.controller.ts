@@ -7,10 +7,11 @@ import mongoose from "mongoose";
 import path from "path";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import CourseModel from "../models/course.model";
-import { createCourse } from "../services/course.service";
+import { createCourse, getAllCoursesService } from "../services/course.service";
 import ErrorHandler from "../utils/errorHandler";
 import { redis } from "../utils/redis";
 import sendMail from "../utils/sendEmail";
+import NotificationModel from "../models/notification.model";
 
 // upload do curso
 export const uploadCourse = CatchAsyncError(
@@ -91,7 +92,7 @@ export const getSingleCourse = CatchAsyncError(
         const course = await CourseModel.findById(req.params.id).select(
           "-courseData.videoUrl -courseData.suggestion -courseData.questions -courseData.links"
         );
-        await redis.set(courseId, JSON.stringify(course));
+        await redis.set(courseId, JSON.stringify(course), "EX", 604800);
         res.status(200).json({
           success: true,
           course,
@@ -191,6 +192,13 @@ export const addQuestion = CatchAsyncError(
       // adcione a pergunta
       courseContent.questions.push(newQuestion);
 
+      // Notificação de criação da pergunta
+      await NotificationModel.create({
+        user: req.user?._id,
+        title: "Nova Pergunta",
+        message: `Uma nova pergunta foi feita em ${courseContent.title}`,
+      });
+
       await course?.save();
 
       res.status(200).json({
@@ -246,6 +254,11 @@ export const addAnswer = CatchAsyncError(
 
       // criar notificação sobre a nova responsta
       if (req.user?._id === question.user._id) {
+        await NotificationModel.create({
+          user: req.user?._id,
+          title: "Nova resposta recebida",
+          message: `Uma nova resposta foi dada para a perguta ${courseContent.title}`,
+        });
       } else {
         const data = {
           name: question.user.name,
@@ -360,7 +373,7 @@ export const addReplyToReview = CatchAsyncError(
         user: req.user,
         comment,
       };
-      
+
       if (!review.commentReplies) {
         review.commentReplies = [];
       }
@@ -373,6 +386,39 @@ export const addReplyToReview = CatchAsyncError(
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// get all courses - admin
+export const getAllCoursesAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getAllCoursesService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// deletar curso - admin
+export const deleteCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const course = await CourseModel.findById(id);
+      if (!course) {
+        return next(new ErrorHandler("Curso não encontrado", 404));
+      }
+      await course.deleteOne({ id });
+      await redis.del(id);
+
+      res.status(200).json({
+        success: true,
+        message: "Curso deletado com successo",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
   }
 );

@@ -1,8 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { ErrorMiddleWare } from "./middleware/error";
+import analyticsRouter from "./routes/analytics.route";
 import courseRouter from "./routes/course.route";
-import useRouter from "./routes/user.route";
+import notificationRouter from "./routes/notification.route";
 import orderRouter from "./routes/order.route";
+import useRouter from "./routes/user.route";
+import layoutRouter from "./routes/layout.route";
 
 require("dotenv").config();
 const express = require("express");
@@ -25,8 +28,15 @@ app.use(
 );
 
 // routes
-app.use("/api/v1", useRouter, courseRouter, orderRouter);
-
+app.use(
+  "/api/v1",
+  useRouter,
+  courseRouter,
+  orderRouter,
+  notificationRouter,
+  analyticsRouter,
+  layoutRouter
+);
 
 // test api
 app.get("/test", (req: Request, res: Response, next: NextFunction) => {

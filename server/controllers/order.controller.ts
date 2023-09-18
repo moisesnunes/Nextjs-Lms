@@ -6,7 +6,7 @@ import CourseModel from "../models/course.model";
 import NotificationModel from "../models/notification.model";
 import { IOrder } from "../models/order.model";
 import userModel from "../models/user.model";
-import { newOrder } from "../services/order.service";
+import { getAllOrdersService, newOrder } from "../services/order.service";
 import ErrorHandler from "../utils/errorHandler";
 import sendMail from "../utils/sendEmail";
 
@@ -88,6 +88,17 @@ export const createOrder = CatchAsyncError(
       newOrder(data, res, next);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// get all Orders - admin
+export const getAllOrders = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getAllOrdersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
   }
 );

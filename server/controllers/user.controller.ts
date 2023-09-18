@@ -6,7 +6,11 @@ import { NextFunction, Request, Response } from "express";
 import jwt, { JwtPayload, Secret } from "jsonwebtoken";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import userModel, { IUser } from "../models/user.model";
-import { getUserById } from "../services/user.service";
+import {
+  getAllUsersService,
+  getUserById,
+  updateUserRoleService,
+} from "../services/user.service";
 import ErrorHandler from "../utils/errorHandler";
 import {
   accessTokenOptions,
@@ -203,7 +207,7 @@ export const updateAccessToken = CatchAsyncError(
 
       const session = await redis.get(decoded.id as string);
       if (!session) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler("Login para continuar", 400));
       }
 
       const user = JSON.parse(session);
@@ -229,6 +233,8 @@ export const updateAccessToken = CatchAsyncError(
       res.cookie("access_token", accessToken, accessTokenOptions);
       res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
+      await redis.set(user._id, JSON.stringify(user), "EX", 604800); // 7 dias
+
       res.status(200).json({
         status: "success",
         accessToken,
@@ -252,7 +258,6 @@ export const getUserInfo = CatchAsyncError(
 );
 
 // autenticação social
-
 interface ISocialAuthBody {
   email: string;
   name: string;
@@ -398,6 +403,56 @@ export const updateProfilePicture = CatchAsyncError(
       res.status(200).json({
         success: true,
         user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// get all users - admin
+export const getAllUsers = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getAllUsersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// atualizar status do usúario - admin
+export const updateUserRole = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, role } = req.body;
+      updateUserRoleService(res, id, role);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// deletar usúario - admin
+export const deleteUser = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, role } = req.params;
+      const user = await userModel.findById(id, role);
+      if (!user) {
+        return next(new ErrorHandler("Usúario não encontrado", 404));
+      }
+      if ((user.role = "admin")) {
+        return next(
+          new ErrorHandler("Usúario admin não pode ser deletado", 404)
+        );
+      }
+      await user.deleteOne({ id });
+      await redis.del(id);
+
+      res.status(200).json({
+        success: true,
+        message: "Usúario deletado com successo",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
